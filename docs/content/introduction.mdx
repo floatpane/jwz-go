@@ -1,0 +1,33 @@
+---
+title: Introduction
+---
+
+# jwz-go
+
+`jwz-go` is a pure-Go implementation of [Jamie Zawinski's mail-threading
+algorithm](https://www.jwz.org/doc/threading.html) — the same threading
+model that ships in Mozilla Thunderbird and most modern MUAs.
+
+Given a flat slice of email headers, `jwz.Build` returns a slice of
+`Thread` trees, joining messages by `Message-ID` / `In-Reply-To` /
+`References`, with a locale-aware subject-match fallback for orphans.
+
+## Features
+
+- **Pure Go, zero dependencies.** Drop in to any mail client, archive
+  viewer, or mailing-list tool without dragging anything else along.
+- **Deterministic output.** Threads sort newest-first by `LatestAt` with a
+  stable `EmailID` tiebreaker; children sort by `Date`. The same input
+  produces byte-identical trees every run.
+- **Locale-aware subject fallback.** Groups orphan messages whose
+  references were stripped by intermediate MTAs across `Re:`, `Fwd:`,
+  `AW:`, `WG:`, `SV:`, `RV:`, `Odp:`, `Antw:`, `ENC:`, and more.
+- **Loop-safe.** Cycle detection in `link()` prevents pathological reply
+  chains from blowing the stack.
+- **Application-defined IDs.** Carry your own row/UID through the tree via
+  `EmailID` — no extra lookup needed when rendering.
+
+> [!NOTE]
+> This library is **only the threading algorithm.** It does not parse RFC
+> 5322 mail, fetch IMAP, or sanitize HTML. You bring the headers; it
+> returns the trees.

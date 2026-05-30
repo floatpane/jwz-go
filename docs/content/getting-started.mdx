@@ -1,0 +1,93 @@
+---
+title: Getting Started
+---
+
+# Getting Started
+
+## Install
+
+```bash
+go get github.com/floatpane/jwz-go
+```
+
+Requires Go 1.26+.
+
+## Minimal example
+
+```go
+package main
+
+import (
+    "fmt"
+    "time"
+
+    "github.com/floatpane/jwz-go"
+)
+
+func main() {
+    base := time.Now()
+    threads := jwz.Build([]jwz.EmailHeader{
+        {ID: "<a@example>", Subject: "Release plan", Date: base, EmailID: "1", Sender: "alice"},
+        {ID: "<b@example>", InReplyTo: "<a@example>",
+            Subject: "Re: Release plan", Date: base.Add(time.Minute), EmailID: "2", Sender: "bob"},
+        {ID: "<c@example>", References: []string{"<a@example>", "<b@example>"},
+            Subject: "Re: Re: Release plan", Date: base.Add(2 * time.Minute), EmailID: "3", Sender: "carol"},
+    })
+
+    for _, t := range threads {
+        fmt.Printf("%s (%d messages, last %s)\n", t.Subject, t.Count, t.LatestAt)
+        walk(t.Root, 0)
+    }
+}
+
+func walk(n *jwz.ThreadNode, depth int) {
+    if n == nil {
+        return
+    }
+    fmt.Printf("%s- %s (%s)\n", indent(depth), n.Sender, n.EmailID)
+    for _, c := range n.Children {
+        walk(c, depth+1)
+    }
+}
+
+func indent(n int) string {
+    s := ""
+    for i := 0; i < n; i++ {
+        s += "  "
+    }
+    return s
+}
+```
+
+## Input
+
+You build a `[]jwz.EmailHeader`. Most fields map 1:1 to RFC 5322:
+
+| Field | Source |
+|-------|--------|
+| `ID`         | `Message-ID:` |
+| `InReplyTo`  | `In-Reply-To:` |
+| `References` | `References:` (parsed as a list of `<id>` tokens) |
+| `Subject`    | `Subject:` |
+| `Date`       | `Date:` (parsed to `time.Time`) |
+| `Sender`     | `From:` display name or address |
+| `EmailID`    | **Your application's** identifier — opaque to jwz-go |
+
+`EmailID` is what you'll get back in the `ThreadNode.EmailID` field so you
+can look the message up in your own store.
+
+## Output
+
+`jwz.Build` returns `[]jwz.Thread`. Each `Thread` has:
+
+- `Root` — top-of-tree `*ThreadNode`. May be a placeholder (empty `EmailID`)
+  if the thread's true root was never seen and several children share a
+  common missing parent.
+- `Count` — number of real messages in the thread.
+- `LatestAt` — most recent `Date` in the thread.
+- `Subject` — canonicalized subject (lowercased, prefixes stripped).
+- `Senders` — distinct sender list in tree order, deduped.
+
+> [!TIP]
+> Threads come back newest-first by `LatestAt`. Don't re-sort by Date — use
+> the order Build gives you for a stable inbox.

@@ -1,0 +1,88 @@
+---
+title: API Reference
+---
+
+# API Reference
+
+Full reference on [pkg.go.dev](https://pkg.go.dev/github.com/floatpane/jwz-go).
+
+## Functions
+
+### `func Build(headers []EmailHeader) []Thread`
+
+Groups `headers` into threads. Output is deterministic.
+
+Sort order:
+
+- Threads: newest-first by `LatestAt`. Ties broken by the smallest
+  `EmailID` in the tree (stable).
+- Children: by `Date`. Ties broken by `EmailID` (stable).
+
+Containers with no real message (`node == nil`) are pruned, except when
+they have multiple children — in that case they survive as a placeholder
+root so siblings stay siblings.
+
+### `func CanonicalSubject(s string) string`
+
+Lowercases `s` and strips repeated locale-aware reply/forward prefixes.
+
+```go
+jwz.CanonicalSubject("Re: AW: SV: Release plan") // "release plan"
+jwz.CanonicalSubject("Fwd: FW: report")          // "report"
+```
+
+Recognized prefixes (case-insensitive, repeated):
+
+```
+Re   Fwd  Fw   AW   WG   Tr   Reé  Resp
+SV   VS   RV   ENC  Antw Odp  R    I
+```
+
+## Types
+
+### `type EmailHeader struct`
+
+```go
+type EmailHeader struct {
+    ID         string    // Message-ID, with or without angle brackets
+    InReplyTo  string    // In-Reply-To
+    References []string  // References, one entry per id or one packed string
+    Subject    string
+    Date       time.Time
+    EmailID    string    // your application's id, opaque to jwz-go
+    Sender     string    // display name or address
+}
+```
+
+`References` accepts either a clean slice of `<id>` tokens *or* a single
+packed `References:` header value — `Build` extracts every `<...>` it
+finds, deduplicating in left-to-right order.
+
+### `type Thread struct`
+
+```go
+type Thread struct {
+    Root     *ThreadNode
+    LatestAt time.Time
+    Count    int
+    Subject  string
+    Senders  []string
+}
+```
+
+### `type ThreadNode struct`
+
+```go
+type ThreadNode struct {
+    EmailID  string
+    Children []*ThreadNode
+    Date     time.Time
+    Sender   string
+    Subject  string
+}
+```
+
+> [!IMPORTANT]
+> A `ThreadNode` with `EmailID == ""` is a **placeholder** — a synthetic
+> node holding orphan siblings under a missing parent. Skip these when
+> rendering individual messages, but recurse into their `Children`.
