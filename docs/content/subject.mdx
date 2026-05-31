@@ -9,6 +9,16 @@ When a message arrives with no usable references (`Message-ID`,
 back to grouping by canonical subject. This recovers threads where
 intermediate MTAs or mailing-list software stripped headers.
 
+```mermaid
+flowchart TD
+    msg([Message root]) --> ref{"usable refs?<br/>Message-ID / In-Reply-To / References"}
+    ref -->|yes| linked[linked by reference<br/>high confidence]
+    ref -->|no| subj{"CanonicalSubject"}
+    subj -->|empty| indep[independent thread]
+    subj -->|unseen| reg[keep root + register subject]
+    subj -->|seen before| merge[link under prior root<br/>best-effort fallback]
+```
+
 ## Canonical form
 
 `CanonicalSubject` lowercases the subject and repeatedly strips a small

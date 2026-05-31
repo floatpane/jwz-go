@@ -8,6 +8,16 @@ title: Algorithm
 threading.html](https://www.jwz.org/doc/threading.html). The five-step
 pipeline below mirrors `Build` line-for-line.
 
+```mermaid
+flowchart LR
+    in([Messages]) --> s1["1 · ID table<br/>normalize + map"]
+    s1 --> s2["2 · Link references<br/>parent→child, reject cycles"]
+    s2 --> s3["3 · Prune empty<br/>collapse nil containers"]
+    s3 --> s4["4 · Group by subject<br/>recover stripped-ref threads"]
+    s4 --> s5["5 · Sort & emit<br/>stable, EmailID tiebreak"]
+    s5 --> out([Thread tree])
+```
+
 ## 1. Build the ID table
 
 Every `Message-ID` and every `References` / `In-Reply-To` ID is normalized
@@ -39,6 +49,15 @@ Walked depth-first. A container with `node == nil` is collapsed:
 - **2+ children** → kept as a placeholder root, so siblings stay siblings.
 
 Containers with a real message are always kept.
+
+```mermaid
+flowchart TD
+    c{"container.node == nil?"} -->|"no — real message"| keep[keep]
+    c -->|yes| n{child count}
+    n -->|0| drop[drop]
+    n -->|1| promote[replace with the child]
+    n -->|2+| ph[keep as placeholder root<br/>siblings stay siblings]
+```
 
 ## 4. Group by subject
 
