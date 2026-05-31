@@ -8,7 +8,11 @@ export const metadata: Metadata = {
 		"Jamie Zawinski's mail-threading algorithm for Go. Pure-Go, zero dependencies, locale-aware subject fallback.",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+	children,
+}: {
+	children: React.ReactNode;
+}) {
 	return (
 		<html lang="en">
 			<body>
@@ -25,3 +29,5 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 		</html>
 	);
 }
+
+export const viewport = { width: "device-width", initialScale: 1 };
